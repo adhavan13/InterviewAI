@@ -1,10 +1,12 @@
-function getProblemStatement() {
-  const problemElement = document.querySelector(".content__u3I1, .elfjS");
-  console.log(problemElement);
-  return problemElement ? problemElement.innerText : "Problem not found";
+function scrapeData() {
+  const container = document.querySelector(
+    ".flex.w-full.flex-1.flex-col.gap-4.overflow-y-auto.px-4.py-5"
+  );
+  if (!container) return [];
+
+  return Array.from(container.querySelectorAll("*"))
+    .map((el) => el.innerText.trim())
+    .filter(Boolean);
 }
 
-chrome.runtime.sendMessage({
-  type: "PROBLEM_STATEMENT",
-  data: getProblemStatement(),
-});
+export default scrapeData;

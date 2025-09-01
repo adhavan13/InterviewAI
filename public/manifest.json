@@ -1,20 +1,12 @@
 {
   "manifest_version": 3,
   "name": "LeetCode Interview Simulator",
-  "version": "1.0",
+  "version": "1.0.0",
   "description": "Simulates interview experience on LeetCode problems using Gemini API",
   "permissions": ["scripting", "activeTab", "storage"],
-  "content_scripts": [
-    {
-      "matches": ["*://leetcode.com/problems/*"],
-      "js": ["src/content/content.js"]
-    }
-  ],
-  "background": {
-    "service_worker": "src/background.js"
-  },
   "action": {
-    "default_popup": "index.html",
-    "default_icon": "icon.png"
-  }
+    "default_popup": "index.html"
+  },
+
+  "host_permissions": ["http://*/*", "https://*/*"]
 }
