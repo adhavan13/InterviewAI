@@ -1,6 +1,7 @@
 import React from "react";
 // import scrapeData from "./content/content";
 import axios from "axios";
+import ChatbotUI from "./components/chatPage";
 
 function App() {
   // Function that will be injected into the active tab
@@ -48,16 +49,17 @@ function App() {
   };
 
   return (
-    <div className="h-[600px] w-[350px] bg-amber-50 flex flex-col items-center justify-center gap-4 z-50 border-r border-gray-800">
-      <h1 className="text-3xl font-bold underline">Hello world!</h1>
+    // <div className="h-[600px] w-[350px] bg-amber-50 flex flex-col items-center justify-center gap-4 z-50 border-r border-gray-800">
+    //   <h1 className="text-3xl font-bold underline">Hello world!</h1>
 
-      <button
-        onClick={handleClick}
-        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-      >
-        Get Data
-      </button>
-    </div>
+    //   <button
+    //     onClick={handleClick}
+    //     className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+    //   >
+    //     Get Data
+    //   </button>
+    // </div>
+    <ChatbotUI />
   );
 }
 
