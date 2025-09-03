@@ -1,5 +1,3 @@
-;
-
 // background.js
 function scrapeData() {
   const container = document.querySelector(
@@ -143,6 +141,7 @@ chrome.runtime.onInstalled.addListener(() => {
   console.log("🚀 Extension installed");
   chrome.action.setBadgeText({ text: "OFF" });
   chrome.action.setBadgeBackgroundColor({ color: "#9E9E9E" });
+  chrome.sidePanel.setOptions({ enabled: true });
 });
 
 // Handle messages from popup or content script
@@ -177,7 +176,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Handle action button click (if you want to trigger from extension icon)
 chrome.action.onClicked.addListener(async (tab) => {
   console.log("🔘 Extension icon clicked");
-
+  await chrome.sidePanel.open({ windowId: tab.windowId });
   if (!isAccessibleUrl(tab.url)) {
     console.error("❌ Cannot run on this page:", tab.url);
     chrome.action.setBadgeText({ text: "ERR" });

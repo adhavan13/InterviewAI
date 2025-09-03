@@ -41,21 +41,6 @@ const ChatbotUI = () => {
     getProbleMDes();
   }, []);
 
-  const simulateBotResponse = (userMessage) => {
-    const responses = [
-      "That's an interesting question! Let me think about that for a moment.",
-      "I understand what you're asking. Here's what I think...",
-      "Great point! I'd be happy to help you with that.",
-      "That's a thoughtful question. Based on what you've shared...",
-      "I see what you mean. Let me provide some insights on that topic.",
-      "Thanks for asking! Here's my perspective on this...",
-      "That's something I can definitely help you with. Consider this...",
-      "Interesting! Let me break this down for you...",
-    ];
-
-    return responses[Math.floor(Math.random() * responses.length)];
-  };
-
   const handleSendMessage = () => {
     if (inputValue.trim() === "") return;
 
@@ -69,36 +54,31 @@ const ChatbotUI = () => {
     setMessages((prev) => [...prev, userMessage]);
     setInputValue("");
     setIsTyping(true);
-
-    // Simulate bot response delay
-    setTimeout(() => {
-      const botMessage = {
-        id: Date.now() + 1,
-        text: simulateBotResponse(inputValue),
-        sender: "bot",
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, botMessage]);
-      setIsTyping(false);
-    }, 1000 + Math.random() * 1500);
+    scrollToBottom();
   };
 
   const handleKeyPress = async (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
+      const messageText = e.target.value;
       setMessages((prev) => [
         ...prev,
         {
           id: uuidv4(),
-          text: e || "error occured",
+          text: messageText || "error occured",
           sender: "user",
           timestamp: new Date(),
         },
       ]);
+      // Get or generate sessionId
+      let sessionId = localStorage.getItem("sessionId");
+      if (!sessionId) {
+        sessionId = uuidv4();
+        localStorage.setItem("sessionId", sessionId);
+      }
       const response = await makeChatRequest({
-        messages: e.target.value,
-        sessionId: "l",
+        content: messageText,
+        sessionId: sessionId,
       });
       setMessages((prev) => [
         ...prev,
@@ -121,12 +101,12 @@ const ChatbotUI = () => {
     });
   };
 
-  const makeChatRequest = async (message) => {
+  const makeChatRequest = async (data) => {
     try {
       const response = await axios.post(
         "http://localhost:3000/api/chatbot/chat",
         {
-          content: data.message,
+          content: data.content,
           sessionId: data.sessionId,
           role: "user",
         },
