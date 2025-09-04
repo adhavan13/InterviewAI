@@ -8,6 +8,7 @@
   "side_panel": {
     "default_path": "index.html"
   },
+  "action": {},
   "background": {
     "service_worker": "background.js"
   },

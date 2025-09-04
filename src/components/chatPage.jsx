@@ -1,17 +1,26 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Send, Bot, User } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
-import axios from "axios";
 
 const ChatbotUI = () => {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
-  const chatContainerRef = useRef(null);
+  const textareaRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // Auto-resize textarea
+  const adjustTextareaHeight = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${Math.min(
+        textareaRef.current.scrollHeight,
+        120
+      )}px`;
+    }
   };
 
   useEffect(() => {
@@ -28,7 +37,7 @@ const ChatbotUI = () => {
           ...prev,
           {
             id: uuidv4(),
-            text: response.backendResponse.message || "error occured",
+            text: response.backendResponse.message || "error occurred",
             sender: "bot",
             timestamp: new Date(),
           },
@@ -41,83 +50,84 @@ const ChatbotUI = () => {
     getProbleMDes();
   }, []);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (inputValue.trim() === "") return;
 
+    const messageText = inputValue.trim();
     const userMessage = {
-      id: Date.now(),
-      text: inputValue,
+      id: uuidv4(),
+      text: messageText,
       sender: "user",
       timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInputValue("");
-    setIsTyping(true);
-    scrollToBottom();
-  };
 
-  const handleKeyPress = async (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      const messageText = e.target.value;
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: uuidv4(),
-          text: messageText || "error occured",
-          sender: "user",
-          timestamp: new Date(),
-        },
-      ]);
-      // Get or generate sessionId
-      let sessionId = localStorage.getItem("sessionId");
-      if (!sessionId) {
-        sessionId = uuidv4();
-        localStorage.setItem("sessionId", sessionId);
-      }
+    // Reset textarea height
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
+
+    scrollToBottom();
+
+    // Get or generate sessionId
+    let sessionId = localStorage.getItem("sessionId");
+    if (!sessionId) {
+      sessionId = uuidv4();
+      localStorage.setItem("sessionId", sessionId);
+    }
+
+    try {
       const response = await makeChatRequest({
         content: messageText,
         sessionId: sessionId,
       });
+
       setMessages((prev) => [
         ...prev,
         {
           id: uuidv4(),
-          text: response || "error occured",
+          text: response || "error occurred",
           sender: "bot",
           timestamp: new Date(),
         },
       ]);
-      setInputValue("");
       scrollToBottom();
+    } catch (error) {
+      console.error("Error sending message:", error);
     }
   };
 
-  const formatTime = (timestamp) => {
-    return timestamp.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const handleInputChange = (e) => {
+    setInputValue(e.target.value);
+    adjustTextareaHeight();
   };
 
   const makeChatRequest = async (data) => {
     try {
-      const response = await axios.post(
-        "http://localhost:3000/api/chatbot/chat",
-        {
+      const response = await fetch("http://localhost:3000/api/chatbot/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
           content: data.content,
           sessionId: data.sessionId,
           role: "user",
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      console.log("Response from backend:", response.data);
-      return response.data.message;
+        }),
+      });
+
+      const responseData = await response.json();
+      console.log("Response from backend:", responseData);
+      return responseData.message;
     } catch (error) {
       console.error("Error fetching chat response:", error);
       return "Sorry, I couldn't process your request.";
@@ -125,132 +135,96 @@ const ChatbotUI = () => {
   };
 
   return (
-    <div className="h-[600px] w-[350px] bg-amber-50 flex flex-col items-center justify-center gap-4 z-50 border-r border-gray-800">
-      {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700 p-4 flex items-center gap-3">
-        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-          <Bot className="w-6 h-6 text-white" />
-        </div>
-        <div>
-          <h1 className="text-lg font-semibold text-white">AI Assistant</h1>
-          <p className="text-sm text-gray-400">Online</p>
+    <div className="h-screen w-full min-w-0 max-w-full bg-white flex flex-col border-l border-gray-200">
+      {/* Simplified Header */}
+      <div className="flex-shrink-0 border-b border-gray-200 bg-white px-4 py-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center flex-shrink-0">
+            <Bot className="w-4 h-4 text-white" />
+          </div>
+          <h1 className="text-lg font-medium text-gray-900 truncate">
+            AI Assistant
+          </h1>
         </div>
       </div>
 
       {/* Messages Container */}
-      <div
-        ref={chatContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth"
-        style={{ scrollBehavior: "smooth" }}
-      >
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex items-start gap-3 ${
-              message.sender === "user" ? "flex-row-reverse" : "flex-row"
-            }`}
-          >
-            {/* Avatar */}
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="w-full">
+          {messages.map((message, index) => (
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                message.sender === "user"
-                  ? "bg-gradient-to-br from-green-500 to-teal-600"
-                  : "bg-gradient-to-br from-blue-500 to-purple-600"
+              key={message.id}
+              className={`py-6 px-4 ${
+                message.sender === "bot" ? "bg-gray-50" : "bg-white"
               }`}
             >
-              {message.sender === "user" ? (
-                <User className="w-4 h-4 text-white" />
-              ) : (
-                <Bot className="w-4 h-4 text-white" />
-              )}
-            </div>
+              <div className="flex gap-4 min-w-0">
+                {/* Avatar */}
+                <div className="flex-shrink-0">
+                  <div
+                    className={`w-7 h-7 rounded-sm flex items-center justify-center ${
+                      message.sender === "user"
+                        ? "bg-green-600 text-white"
+                        : "bg-gray-900 text-white"
+                    }`}
+                  >
+                    {message.sender === "user" ? (
+                      <User className="w-4 h-4" />
+                    ) : (
+                      <Bot className="w-4 h-4" />
+                    )}
+                  </div>
+                </div>
 
-            {/* Message Bubble */}
-            <div
-              className={`max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl ${
-                message.sender === "user" ? "text-right" : "text-left"
-              }`}
-            >
-              <div
-                className={`inline-block p-3 rounded-2xl shadow-lg ${
-                  message.sender === "user"
-                    ? "bg-gradient-to-br from-green-500 to-teal-600 text-white rounded-br-md"
-                    : "bg-gray-800 text-gray-100 border border-gray-700 rounded-bl-md"
-                }`}
-              >
-                <p className="text-sm leading-relaxed">{message.text}</p>
-              </div>
-              <p
-                className={`text-xs text-gray-500 mt-1 ${
-                  message.sender === "user" ? "text-right" : "text-left"
-                }`}
-              >
-                {formatTime(message.timestamp)}
-              </p>
-            </div>
-          </div>
-        ))}
-
-        {/* Typing Indicator */}
-        {isTyping && (
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-              <Bot className="w-4 h-4 text-white" />
-            </div>
-            <div className="bg-gray-800 border border-gray-700 rounded-2xl rounded-bl-md p-3 max-w-xs">
-              <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                <div
-                  className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                  style={{ animationDelay: "0.1s" }}
-                ></div>
-                <div
-                  className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                  style={{ animationDelay: "0.2s" }}
-                ></div>
+                {/* Message Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-900 mb-1 truncate">
+                    {message.sender === "user" ? "You" : "AI Assistant"}
+                  </div>
+                  <div className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere">
+                    {message.text}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-
+          ))}
+        </div>
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input Area */}
-      <div className="bg-gray-800 border-t border-gray-700 p-4">
-        <div className="flex items-end gap-3 max-w-full">
-          <div className="flex-1 relative">
+      <div className="flex-shrink-0 border-t border-gray-200 bg-white">
+        <div className="px-4 py-4">
+          <div className="relative flex items-end bg-white border border-gray-300 rounded-lg shadow-sm focus-within:border-gray-400 focus-within:shadow-md transition-all duration-200 min-w-0">
             <textarea
+              ref={textareaRef}
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={handleInputChange}
               onKeyDown={handleKeyPress}
-              placeholder="Type your message..."
-              className="w-full bg-gray-700 border border-gray-600 rounded-2xl px-4 py-3 pr-12 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 max-h-32"
+              placeholder="Message AI Assistant..."
+              className="flex-1 resize-none border-0 bg-transparent px-3 py-3 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-0 min-w-0"
               rows="1"
               style={{
-                minHeight: "48px",
-                maxHeight: "128px",
-                overflowY: inputValue.length > 100 ? "auto" : "hidden",
+                minHeight: "44px",
+                maxHeight: "120px",
               }}
             />
+            <button
+              onClick={handleSendMessage}
+              disabled={inputValue.trim() === ""}
+              className={`m-1.5 flex h-8 w-8 items-center justify-center rounded-md transition-colors flex-shrink-0 ${
+                inputValue.trim() === ""
+                  ? "text-gray-400 cursor-not-allowed"
+                  : "bg-gray-900 text-white hover:bg-gray-800 active:bg-gray-700"
+              }`}
+            >
+              <Send className="w-4 h-4" />
+            </button>
           </div>
-
-          <button
-            onClick={handleSendMessage}
-            disabled={inputValue.trim() === "" || isTyping}
-            className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-200 flex-shrink-0 ${
-              inputValue.trim() === "" || isTyping
-                ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                : "bg-gradient-to-br from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 active:scale-95 shadow-lg hover:shadow-xl"
-            }`}
-          >
-            <Send className="w-5 h-5" />
-          </button>
+          <div className="mt-2 text-xs text-gray-500 text-center">
+            Press Enter to send, Shift + Enter for new line
+          </div>
         </div>
-
-        <p className="text-xs text-gray-500 mt-2 text-center">
-          Press Enter to send • Shift + Enter for new line
-        </p>
       </div>
     </div>
   );
