@@ -26,13 +26,19 @@ const ChatbotUI = () => {
   useEffect(() => {
     const getProbleMDes = async () => {
       try {
+        chrome.storage.local.remove("sessionId", () => {
+          console.log("🗑️ sessionId removed from chrome.storage");
+        });
         const response = await chrome.runtime.sendMessage({
           type: "SCRAPE_DATA",
+          sessionId: uuidv4(), // 👈 session id
         });
+
         console.log(
           "Response from background:",
           response.backendResponse.message
         );
+
         setMessages((prev) => [
           ...prev,
           {

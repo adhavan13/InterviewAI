@@ -1,16 +1,120 @@
 // background.js
-function scrapeData() {}
+function scrapeData() {
+  const container = document.querySelector(
+    ".flex.w-full.flex-1.flex-col.gap-4.overflow-y-auto.px-4.py-5"
+  );
 
-// Generate session ID
-function generateSessionId() {}
+  if (!container) {
+    console.log("❌ Container not found");
+    return { success: false, error: "Container not found" };
+  }
 
-// Get or create session ID using Chrome storage
-async function getOrCreateSessionId() {}
+  try {
+    const data = Array.from(container.querySelectorAll("*"))
+      .map((el) => (el.innerText ? el.innerText.trim() : ""))
+      .filter(Boolean);
+
+    const text = data.join("\n");
+    // console.log("✅ Scraped text:", text);
+    return { success: true, data: text };
+  } catch (error) {
+    console.error("❌ Error scraping data:", error);
+    return { success: false, error: error.message };
+  }
+}
 
 // Check if URL is accessible for content script injection
-function isAccessibleUrl(url) {}
+function isAccessibleUrl(url) {
+  const restrictedSchemes = [
+    "chrome:",
+    "chrome-extension:",
+    "moz-extension:",
+    "edge:",
+  ];
+  return url && !restrictedSchemes.some((scheme) => url.startsWith(scheme));
+}
 
-async function makeInitialRequest() {}
+async function makeInitialRequest(sessionId) {
+  try {
+    // Get active tab
+    let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+    if (!tab) {
+      console.error("❌ No active tab found");
+      return { success: false, error: "No active tab found" };
+    }
+
+    // Check if we can access this URL
+    if (!isAccessibleUrl(tab.url)) {
+      console.error("❌ Cannot access this type of page:", tab.url);
+      return {
+        success: false,
+        error: `Cannot access ${tab.url}. Extension cannot run on chrome:// pages or extension pages.`,
+      };
+    }
+
+    console.log("🔍 Attempting to scrape from:", tab.url);
+
+    // Inject script and get results
+    const injectionResults = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: scrapeData,
+    });
+
+    if (!injectionResults || !injectionResults[0]) {
+      console.error("❌ Script injection failed");
+      return { success: false, error: "Script injection failed" };
+    }
+
+    const result = injectionResults[0].result;
+
+    if (!result.success) {
+      console.error("❌ Scraping failed:", result.error);
+      return result;
+    }
+
+    // Send data to backend
+    const response = await fetch("http://localhost:3000/api/chatbot/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        content: result.data,
+        sessionId: sessionId,
+        role: "user",
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const responseData = await response.json();
+    // console.log("✅ Data sent to backend successfully:", responseData);
+
+    return {
+      success: true,
+      scrapedData: result.data,
+      backendResponse: responseData,
+      sessionId: sessionId,
+    };
+  } catch (error) {
+    console.error("❌ Error in makeInitialRequest:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "SCRAPE_DATA") {
+    (async () => {
+      const result = await makeInitialRequest(message.sessionId); // your scraping + backend call
+      sendResponse(result);
+    })();
+    // 👇 VERY IMPORTANT: keeps sendResponse alive for async
+    return true;
+  }
+});
 
 chrome.runtime.onInstalled.addListener(() => {
   // Ensure the side panel can be opened by clicking the extension icon
