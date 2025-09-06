@@ -188,7 +188,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === "OPEN_SIDE_PANEL") {
     chrome.sidePanel.open({ windowId: sender.tab.windowId });
     (async () => {
-      const get
       const result = await makeToughTestCaseRequest(message.sessionId); // your scraping + backend call
       sendResponse(result);
     })();
