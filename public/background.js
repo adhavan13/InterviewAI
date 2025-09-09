@@ -178,21 +178,21 @@ async function makeToughTestCaseRequest(sessionId) {
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === "SCRAPE_DATA") {
-    (async () => {
-      const result = await makeInitialRequest(message.sessionId); // your scraping + backend call
-      sendResponse(result);
-    })();
-    // 👇 VERY IMPORTANT: keeps sendResponse alive for async
-    return true;
-  } else if (message.type === "OPEN_SIDE_PANEL") {
+  if (message.type === "OPEN_SIDE_PANEL") {
     chrome.sidePanel.open({ windowId: sender.tab.windowId });
-    (async () => {
-      const result = await makeToughTestCaseRequest(message.sessionId); // your scraping + backend call
-      sendResponse(result);
-    })();
-    // 👇 VERY IMPORTANT: keeps sendResponse alive for async
+    queuedMessage = {
+      type: "INTERVIEW_SIMULATION",
+      problemId: message.problemId,
+      content: message.content,
+    };
+    console.log(queuedMessage);
+    sendResponse({ success: true });
     return true;
+  }
+
+  if (message.type === "SIDE_PANEL_READY" && queuedMessage) {
+    chrome.runtime.sendMessage(queuedMessage);
+    queuedMessage = null;
   }
 });
 

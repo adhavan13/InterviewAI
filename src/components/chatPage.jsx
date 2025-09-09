@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Send, Bot, User } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
+import axios from "axios";
 
 const ChatbotUI = () => {
   const [messages, setMessages] = useState([]);
@@ -24,36 +25,63 @@ const ChatbotUI = () => {
   };
 
   useEffect(() => {
-    const getProbleMDes = async () => {
-      try {
-        chrome.storage.local.remove("sessionId", () => {
-          console.log("🗑️ sessionId removed from chrome.storage");
-        });
-        const response = await chrome.runtime.sendMessage({
-          type: "SCRAPE_DATA",
-          sessionId: uuidv4(), // 👈 session id
-        });
+    const listener = async (message, sender, sendResponse) => {
+      if (message.type === "INTERVIEW_SIMULATION") {
+        try {
+          const { problemId, content } = message;
 
-        console.log(
-          "Response from background:",
-          response.backendResponse.message
-        );
+          if (!problemId || !content) {
+            console.warn("❌ Missing problemId or content in message", message);
+            return;
+          }
 
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: uuidv4(),
-            text: response.backendResponse.message || "error occurred",
-            sender: "bot",
-            timestamp: new Date(),
-          },
-        ]);
-        scrollToBottom();
-      } catch (error) {
-        console.error("Failed to get session ID:", error);
+          const response = await axios.post(
+            "http://localhost:3000/api/chatbot/chat",
+            {
+              role: "user",
+              problemId,
+              content,
+            }
+          );
+
+          const botMessage =
+            response?.data?.backendResponse?.message ||
+            "Error: no response from backend";
+
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: uuidv4(),
+              text: botMessage,
+              sender: "bot",
+              timestamp: new Date(),
+            },
+          ]);
+
+          scrollToBottom();
+        } catch (error) {
+          console.error(
+            "❌ Error handling INTERVIEW_SIMULATION message:",
+            error
+          );
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: uuidv4(),
+              text: "An error occurred while fetching the bot response.",
+              sender: "bot",
+              timestamp: new Date(),
+            },
+          ]);
+        }
       }
     };
-    getProbleMDes();
+
+    chrome.runtime.onMessage.addListener(listener);
+
+    return () => {
+      chrome.runtime.onMessage.removeListener(listener);
+    };
   }, []);
 
   const handleSendMessage = async () => {

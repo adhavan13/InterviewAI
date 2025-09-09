@@ -3,100 +3,162 @@ function injectPopupCard() {
   const testCaseBox = document.querySelector(
     ".flex.w-full.flex-row.items-start.justify-between.gap-4"
   );
-
-  if (!testCaseBox) {
-    console.log("❌ Test case box not found yet...");
-    return;
-  }
-
-  // Prevent duplicates
+  if (!testCaseBox) return;
   if (document.getElementById("leetcode-helper-card")) return;
 
-  // Create popup card container
   const card = document.createElement("div");
   card.id = "leetcode-helper-card";
-  card.style.position = "relative";
-  card.style.display = "inline-block";
-  card.style.marginLeft = "12px";
+  card.style.marginLeft = "0.75rem"; // ~12px in rem
 
-  // Create button (trigger) with professional styling
   const btn = document.createElement("button");
   btn.innerText = "💡 Tough Cases";
   btn.style.cssText = `
-    padding: 8px 16px;
+    padding: 0.5rem 1rem; /* scales with font */
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border: none;
-    border-radius: 8px;
+    border-radius: 0.5rem;
     cursor: pointer;
-    font-size: 13px;
+    font-size: clamp(0.75rem, 1vw, 0.875rem); /* responsive font */
     font-weight: 500;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.25);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    letter-spacing: 0.025em;
-    min-height: 36px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    position: relative;
+    max-width: 100%;
+    white-space: nowrap;
     overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+    transition: all 0.2s ease-in-out;
   `;
 
-  // Add subtle hover and active states
   btn.addEventListener("mouseenter", () => {
-    btn.style.transform = "translateY(-1px)";
-    btn.style.boxShadow = "0 4px 16px rgba(102, 126, 234, 0.35)";
-    btn.style.background = "linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%)";
+    btn.style.opacity = "0.9";
   });
 
   btn.addEventListener("mouseleave", () => {
-    btn.style.transform = "translateY(0)";
-    btn.style.boxShadow = "0 2px 8px rgba(102, 126, 234, 0.25)";
-    btn.style.background = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)";
+    btn.style.opacity = "1";
   });
 
-  btn.addEventListener("mousedown", () => {
-    btn.style.transform = "translateY(0) scale(0.98)";
-  });
-
-  btn.addEventListener("mouseup", () => {
-    btn.style.transform = "translateY(-1px) scale(1)";
-  });
-
-  // Remove popup elements as they're no longer needed
-
-  // Add button click → open side panel with feedback
-  btn.addEventListener("click", (e) => {
-    e.preventDefault();
-
-    // Add click feedback
-    btn.style.background = "linear-gradient(135deg, #4c51bf 0%, #553c9a 100%)";
-    setTimeout(() => {
-      btn.style.background =
-        "linear-gradient(135deg, #667eea 0%, #764ba2 100%)";
-    }, 150);
-
+  btn.addEventListener("click", () => {
     chrome.runtime.sendMessage({
       type: "OPEN_SIDE_PANEL",
       source: "tough-test-cases",
     });
   });
 
-  // Append elements
   card.appendChild(btn);
   testCaseBox.appendChild(card);
+  console.log("✅ Injected Tough Cases button!");
+}
+function injectTopBarButton() {
+  const navContainer = document.querySelector(
+    ".relative.flex.flex-1.items-center.justify-end"
+  );
+  if (!navContainer) return;
+  if (document.getElementById("leetcode-topbar-btn")) return;
 
-  console.log("✅ Injected enhanced Tough Cases popup card!");
+  const btn = document.createElement("button");
+  btn.id = "leetcode-topbar-btn";
+  btn.innerText = "⚡ Quick Hint";
+  btn.style.cssText = `
+    padding: 0.4rem 0.8rem;
+    background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    font-size: clamp(0.7rem, 0.9vw, 0.85rem);
+    margin-left: 0.5rem;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+    transition: all 0.2s ease-in-out;
+  `;
+
+  btn.addEventListener("mouseenter", () => {
+    btn.style.opacity = "0.9";
+  });
+
+  btn.addEventListener("mouseleave", () => {
+    btn.style.opacity = "1";
+  });
+
+  btn.addEventListener("click", async () => {
+    try {
+      const problemId = scrapeProblemId();
+      const contentData = scrapeData();
+
+      if (!problemId.success || !contentData.success) {
+        console.log("Error scraping data");
+        return;
+      }
+
+      // Ask background to open side panel
+      chrome.runtime.sendMessage({
+        type: "OPEN_SIDE_PANEL",
+        source: "interview-simulation",
+        problemId: problemId.data,
+        content: contentData.data,
+      });
+    } catch (error) {
+      console.error(
+        "❌ Could not send message, extension context invalidated",
+        error
+      );
+    }
+  });
+
+  navContainer.appendChild(btn);
+  console.log("✅ Injected Quick Hint button!");
+}
+function scrapeProblemId() {
+  const container = document.querySelector(
+    ".no-underline.hover\\:text-blue-s.truncate"
+  );
+  console.log(container);
+  if (!container) {
+    console.log("❌ Container not found");
+    return { success: false, error: "Container not found" };
+  }
+  return { success: true, data: container };
+}
+
+function scrapeData() {
+  console.log("Scrapping");
+  const container = document.querySelector(
+    ".flex.w-full.flex-1.flex-col.gap-4.overflow-y-auto.px-4.py-5"
+  );
+
+  if (!container) {
+    console.log("❌ Container not found");
+    return { success: false, error: "Container not found" };
+  }
+
+  try {
+    const data = Array.from(container.querySelectorAll("*"))
+      .map((el) => (el.innerText ? el.innerText.trim() : ""))
+      .filter(Boolean);
+
+    const text = data.join("\n");
+    // console.log("✅ Scraped text:", text);
+    return { success: true, data: text };
+  } catch (error) {
+    console.error("❌ Error scraping data:", error);
+    return { success: false, error: error.message };
+  }
 }
 
 // Run after page load
 window.addEventListener("load", () => {
-  setTimeout(injectPopupCard, 2000);
+  setTimeout(() => {
+    injectPopupCard();
+    injectTopBarButton();
+  }, 2000);
 });
 
-// MutationObserver (LeetCode is React SPA → reload UI)
+// MutationObserver (SPA navigation)
 const observer = new MutationObserver(() => {
   injectPopupCard();
+  injectTopBarButton();
 });
 observer.observe(document.body, { childList: true, subtree: true });
