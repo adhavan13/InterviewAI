@@ -34,7 +34,9 @@ const ChatbotUI = () => {
             console.warn("❌ Missing problemId or content in message", message);
             return;
           }
-
+          chrome.storage.local.set({ problemId }, () => {
+            console.log("✅ problemId saved to local storage:", problemId);
+          });
           const response = await axios.post(
             "http://localhost:3000/api/chatbot/chat",
             {
@@ -43,10 +45,9 @@ const ChatbotUI = () => {
               content,
             }
           );
-
+          console.log("response form the backedn", response);
           const botMessage =
-            response?.data?.backendResponse?.message ||
-            "Error: no response from backend";
+            response?.data?.message || "Error: no response from backend";
 
           setMessages((prev) => [
             ...prev,
@@ -106,16 +107,21 @@ const ChatbotUI = () => {
     scrollToBottom();
 
     // Get or generate sessionId
-    let sessionId = localStorage.getItem("sessionId");
-    if (!sessionId) {
-      sessionId = uuidv4();
-      localStorage.setItem("sessionId", sessionId);
+    let problemId;
+    chrome.storage.local.get("problemId", (result) => {
+      problemId = result.problemId;
+      console.log("Retrieved problemId:", result.problemId);
+    });
+
+    if (!problemId) {
+      problemId = uuidv4();
+      localStorage.setItem("problemId", problemId);
     }
 
     try {
       const response = await makeChatRequest({
         content: messageText,
-        sessionId: sessionId,
+        problemId: problemId,
       });
 
       setMessages((prev) => [
@@ -147,21 +153,16 @@ const ChatbotUI = () => {
 
   const makeChatRequest = async (data) => {
     try {
-      const response = await fetch("http://localhost:3000/api/chatbot/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const response = await axios.post(
+        "http://localhost:3000/api/chatbot/chat",
+        {
           content: data.content,
-          sessionId: data.sessionId,
+          problemId: data.problemId,
           role: "user",
-        }),
-      });
-
-      const responseData = await response.json();
-      console.log("Response from backend:", responseData);
-      return responseData.message;
+        }
+      );
+      console.log("Response from backend:", response);
+      return response.data.message;
     } catch (error) {
       console.error("Error fetching chat response:", error);
       return "Sorry, I couldn't process your request.";

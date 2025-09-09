@@ -57,7 +57,7 @@ function injectTopBarButton() {
 
   const btn = document.createElement("button");
   btn.id = "leetcode-topbar-btn";
-  btn.innerText = "⚡ Quick Hint";
+  btn.innerText = "Interview Simulation";
   btn.style.cssText = `
     padding: 0.4rem 0.8rem;
     background: linear-gradient(135deg, #34d399 0%, #059669 100%);
@@ -112,22 +112,24 @@ function injectTopBarButton() {
   console.log("✅ Injected Quick Hint button!");
 }
 function scrapeProblemId() {
+  // Properly escape the colon in hover:text-blue-s
   const container = document.querySelector(
     ".no-underline.hover\\:text-blue-s.truncate"
   );
-  console.log(container);
+
   if (!container) {
     console.log("❌ Container not found");
     return { success: false, error: "Container not found" };
   }
-  return { success: true, data: container };
+
+  // Return the text content instead of the element
+  const text = container.innerText.trim();
+  return { success: true, data: text };
 }
 
 function scrapeData() {
   console.log("Scrapping");
-  const container = document.querySelector(
-    ".flex.w-full.flex-1.flex-col.gap-4.overflow-y-auto.px-4.py-5"
-  );
+  const container = document.querySelector(".elfjS");
 
   if (!container) {
     console.log("❌ Container not found");
