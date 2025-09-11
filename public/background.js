@@ -179,15 +179,27 @@ async function makeToughTestCaseRequest(sessionId) {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "OPEN_SIDE_PANEL") {
-    chrome.sidePanel.open({ windowId: sender.tab.windowId });
-    queuedMessage = {
-      type: "INTERVIEW_SIMULATION",
-      problemId: message.problemId,
-      content: message.content,
-    };
-    console.log(queuedMessage);
-    sendResponse({ success: true });
-    return true;
+    if (message.source === "interview-simulation") {
+      chrome.sidePanel.open({ windowId: sender.tab.windowId });
+      queuedMessage = {
+        type: "INTERVIEW_SIMULATION",
+        problemId: message.problemId,
+        content: message.content,
+      };
+      console.log(queuedMessage);
+      sendResponse({ success: true });
+      return true;
+    } else if (message.source === "tough-testcases") {
+      chrome.sidePanel.open({ windowId: sender.tab.windowId });
+      queuedMessage = {
+        type: "TOUGH_TESTCASES",
+        problemId: message.problemId,
+        content: message.content,
+      };
+      console.log(queuedMessage);
+      sendResponse({ success: true });
+      return true;
+    }
   }
 
   if (message.type === "SIDE_PANEL_READY" && queuedMessage) {

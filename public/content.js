@@ -37,11 +37,29 @@ function injectPopupCard() {
     btn.style.opacity = "1";
   });
 
-  btn.addEventListener("click", () => {
-    chrome.runtime.sendMessage({
-      type: "OPEN_SIDE_PANEL",
-      source: "tough-test-cases",
-    });
+  btn.addEventListener("click", async () => {
+    try {
+      const problemId = scrapeProblemId();
+      const contentData = scrapeData();
+
+      if (!problemId.success || !contentData.success) {
+        console.log("Error scraping data");
+        return;
+      }
+
+      // Ask background to open side panel
+      chrome.runtime.sendMessage({
+        type: "OPEN_SIDE_PANEL",
+        source: "tough-testcases",
+        problemId: problemId.data,
+        content: contentData.data,
+      });
+    } catch (error) {
+      console.error(
+        "❌ Could not send message, extension context invalidated",
+        error
+      );
+    }
   });
 
   card.appendChild(btn);
@@ -126,7 +144,6 @@ function scrapeProblemId() {
   const text = container.innerText.trim();
   return { success: true, data: text };
 }
-
 function scrapeData() {
   console.log("Scrapping");
   const container = document.querySelector(".elfjS");

@@ -26,17 +26,20 @@ const ChatbotUI = () => {
 
   useEffect(() => {
     const listener = async (message, sender, sendResponse) => {
-      if (message.type === "INTERVIEW_SIMULATION") {
-        try {
+      try {
+        // Handle INTERVIEW_SIMULATION messages
+        if (message.type === "INTERVIEW_SIMULATION") {
           const { problemId, content } = message;
 
           if (!problemId || !content) {
             console.warn("❌ Missing problemId or content in message", message);
             return;
           }
+
           chrome.storage.local.set({ problemId }, () => {
             console.log("✅ problemId saved to local storage:", problemId);
           });
+
           const response = await axios.post(
             "http://localhost:3000/api/chatbot/chat",
             {
@@ -45,7 +48,7 @@ const ChatbotUI = () => {
               content,
             }
           );
-          console.log("response form the backedn", response);
+
           const botMessage =
             response?.data?.message || "Error: no response from backend";
 
@@ -60,21 +63,56 @@ const ChatbotUI = () => {
           ]);
 
           scrollToBottom();
-        } catch (error) {
-          console.error(
-            "❌ Error handling INTERVIEW_SIMULATION message:",
-            error
+        }
+
+        // Handle OPEN_SIDE_PANEL messages
+        else if (message.type === "TOUGH_TESTCASES") {
+          const { problemId, content } = message;
+
+          if (!problemId || !content) {
+            console.warn("❌ Missing problemId or content in message", message);
+            return;
+          }
+
+          chrome.storage.local.set({ problemId }, () => {
+            console.log("✅ problemId saved to local storage:", problemId);
+          });
+
+          const response = await axios.post(
+            "http://localhost:3000/api/chatbot/chat",
+            {
+              role: "user",
+              problemId,
+              content,
+            }
           );
+
+          const botMessage =
+            response?.data?.message || "Error: no response from backend";
+
           setMessages((prev) => [
             ...prev,
             {
               id: uuidv4(),
-              text: "An error occurred while fetching the bot response.",
+              text: botMessage,
               sender: "bot",
               timestamp: new Date(),
             },
           ]);
+
+          scrollToBottom();
         }
+      } catch (error) {
+        console.error("❌ Error handling message:", error);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: uuidv4(),
+            text: "An error occurred while processing the message.",
+            sender: "bot",
+            timestamp: new Date(),
+          },
+        ]);
       }
     };
 
@@ -124,11 +162,16 @@ const ChatbotUI = () => {
         problemId: problemId,
       });
 
+      if (response.data.message) {
+        chrome.storage.local.clear(() => {
+          console.log("🧹 Cleared all extension storage after final report.");
+        });
+      }
       setMessages((prev) => [
         ...prev,
         {
           id: uuidv4(),
-          text: response || "error occurred",
+          text: response.data.message || "error occurred",
           sender: "bot",
           timestamp: new Date(),
         },
@@ -162,7 +205,7 @@ const ChatbotUI = () => {
         }
       );
       console.log("Response from backend:", response);
-      return response.data.message;
+      return response;
     } catch (error) {
       console.error("Error fetching chat response:", error);
       return "Sorry, I couldn't process your request.";
