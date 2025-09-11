@@ -68,18 +68,21 @@ const ChatbotUI = () => {
         // Handle OPEN_SIDE_PANEL messages
         else if (message.type === "TOUGH_TESTCASES") {
           const { problemId, content } = message;
-
+          const type = message.type;
           if (!problemId || !content) {
             console.warn("❌ Missing problemId or content in message", message);
             return;
           }
 
-          chrome.storage.local.set({ problemId }, () => {
+          chrome.storage.local.set({ problemId: problemId }, () => {
             console.log("✅ problemId saved to local storage:", problemId);
+          });
+          chrome.storage.local.set({ type: type }, () => {
+            console.log("✅ problemId saved to local storage:", type);
           });
 
           const response = await axios.post(
-            "http://localhost:3000/api/chatbot/chat",
+            "http://localhost:3000/api/chatbot/testcases",
             {
               role: "user",
               problemId,
@@ -146,27 +149,23 @@ const ChatbotUI = () => {
 
     // Get or generate sessionId
     let problemId;
+    let type;
     chrome.storage.local.get("problemId", (result) => {
       problemId = result.problemId;
       console.log("Retrieved problemId:", result.problemId);
     });
-
-    if (!problemId) {
-      problemId = uuidv4();
-      localStorage.setItem("problemId", problemId);
-    }
+    chrome.storage.local.get("type", (result) => {
+      type = result.type;
+      console.log("Retrieved type:", result.type);
+    });
 
     try {
       const response = await makeChatRequest({
         content: messageText,
         problemId: problemId,
+        type: type,
       });
-
-      if (response.data.message) {
-        chrome.storage.local.clear(() => {
-          console.log("🧹 Cleared all extension storage after final report.");
-        });
-      }
+      
       setMessages((prev) => [
         ...prev,
         {

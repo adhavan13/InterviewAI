@@ -47,6 +47,8 @@ function injectPopupCard() {
         return;
       }
 
+      console.log("Triggered");
+
       // Ask background to open side panel
       chrome.runtime.sendMessage({
         type: "OPEN_SIDE_PANEL",
@@ -145,7 +147,6 @@ function scrapeProblemId() {
   return { success: true, data: text };
 }
 function scrapeData() {
-  console.log("Scrapping");
   const container = document.querySelector(".elfjS");
 
   if (!container) {
