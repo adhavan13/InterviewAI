@@ -131,6 +131,74 @@ function injectTopBarButton() {
   navContainer.appendChild(btn);
   console.log("✅ Injected Quick Hint button!");
 }
+function injectAdvanceAnalytics() {
+  const observer = new MutationObserver(() => {
+    const targetContainer = document.querySelector(
+      ".flex.w-full.flex-col.gap-2.rounded-lg.border.p-3.border-border-tertiary.dark\\:border-border-tertiary"
+    );
+
+    if (targetContainer && !document.getElementById("advance-analytics-btn")) {
+      const btn = document.createElement("button");
+      btn.id = "advance-analytics-btn";
+      btn.innerText = "Advance Analytics";
+      btn.style.cssText = `
+        padding: 0.5rem 1rem;
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: white;
+        border: none;
+        border-radius: 0.375rem;
+        cursor: pointer;
+        font-size: clamp(0.75rem, 0.9vw, 0.9rem);
+        margin-top: 0.5rem;
+        width: fit-content;
+        align-self: flex-start;
+        transition: all 0.2s ease-in-out;
+      `;
+
+      btn.addEventListener("mouseenter", () => {
+        btn.style.opacity = "0.9";
+      });
+
+      btn.addEventListener("mouseleave", () => {
+        btn.style.opacity = "1";
+      });
+
+      btn.addEventListener("click", () => {
+        console.log("📊 Advance Analytics clicked!");
+        try {
+          const code = scrapeCodeEditor();
+          if (!code.success) {
+            console.log("Error scraping data");
+            return;
+          }
+          // Ask background to open side panel
+          chrome.runtime.sendMessage({
+            type: "OPEN_SIDE_PANEL",
+            source: "advance-analytics",
+            content: code.data,
+          });
+        } catch (error) {
+          console.error(
+            "❌ Could not send message, extension context invalidated",
+            error
+          );
+        }
+      });
+
+      targetContainer.appendChild(btn);
+      console.log(
+        "✅ Injected Advance Analytics button after successful submission!"
+      );
+    }
+  });
+
+  // observe the whole body for changes
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
+// Call this once when your content script loads
+injectAdvanceAnalytics();
+
 function scrapeProblemId() {
   // Properly escape the colon in hover:text-blue-s
   const container = document.querySelector(
@@ -161,6 +229,28 @@ function scrapeData() {
 
     const text = data.join("\n");
     // console.log("✅ Scraped text:", text);
+    return { success: true, data: text };
+  } catch (error) {
+    console.error("❌ Error scraping data:", error);
+    return { success: false, error: error.message };
+  }
+}
+function scrapeCodeEditor() {
+  const container = document.querySelector(
+    ".view-lines.monaco-mouse-cursor-text"
+  );
+
+  if (!container) {
+    console.log("❌ Container not found");
+    return { success: false, error: "Container not found" };
+  }
+
+  try {
+    const data = Array.from(container.querySelectorAll("*"))
+      .map((el) => (el.innerText ? el.innerText.trim() : ""))
+      .filter(Boolean);
+
+    const text = data.join("\n");
     return { success: true, data: text };
   } catch (error) {
     console.error("❌ Error scraping data:", error);
